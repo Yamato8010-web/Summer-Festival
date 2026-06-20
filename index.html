@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夏祭りポーズゲーム</title>
+
+<style>
+body{
+    margin:0;
+    background:#000;
+    overflow:hidden;
+    font-family:sans-serif;
+}
+
+video{
+    position:absolute;
+    width:100vw;
+    height:100vh;
+    object-fit:cover;
+    transform:scaleX(-1); /* 鏡表示 */
+}
+
+canvas{
+    position:absolute;
+    width:100vw;
+    height:100vh;
+    pointer-events:none;
+}
+
+#message{
+    position:absolute;
+    top:20px;
+    width:100%;
+    text-align:center;
+    font-size:40px;
+    color:white;
+    font-weight:bold;
+    text-shadow:0 0 10px black;
+}
+</style>
+</head>
+
+<body>
+
+<div id="message">
+🙌 両手を上げる → 花火<br>
+🙆 丸を作る → 風船
+</div>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="effectCanvas"></canvas>
+
+<script>
+const video = document.getElementById("video");
+
+async function startCamera(){
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+            facingMode:"user"
+        },
+        audio:false
+    });
+
+    video.srcObject = stream;
+
+}
+
+startCamera();
+
+
+// -------------------------
+// 仮の演出
+// -------------------------
+
+function showFirework(){
+
+    const msg = document.getElementById("message");
+    msg.innerHTML = "🎆 花火！！ 🎆";
+
+    setTimeout(()=>{
+        msg.innerHTML="🙌 両手を上げる → 花火<br>🙆 丸を作る → 風船";
+    },1500);
+
+}
+
+function showBalloon(){
+
+    const msg = document.getElementById("message");
+    msg.innerHTML = "🎈 風船！！ 🎈";
+
+    setTimeout(()=>{
+        msg.innerHTML="🙌 両手を上げる → 花火<br>🙆 丸を作る → 風船";
+    },1500);
+
+}
+
+
+// --------------------------------------
+// ここにAIのポーズ認識結果を入れる
+// --------------------------------------
+
+// 例（あとで置き換える）
+//
+// if(両手を上げた){
+//     showFirework();
+// }
+//
+// if(丸を作った){
+//     showBalloon();
+// }
+
+</script>
+
+</body>
+</html>
