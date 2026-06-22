@@ -2,114 +2,171 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>夏祭りポーズゲーム</title>
+<title>夏祭りプロジェクション</title>
 
 <style>
-body{
-    margin:0;
-    background:#000;
-    overflow:hidden;
-    font-family:sans-serif;
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
 }
 
-video{
-    position:absolute;
-    width:100vw;
-    height:100vh;
-    object-fit:cover;
-    transform:scaleX(-1); /* 鏡表示 */
+video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  transform: scaleX(-1); /* 鏡表示（重要） */
 }
 
-canvas{
-    position:absolute;
-    width:100vw;
-    height:100vh;
-    pointer-events:none;
-}
-
-#message{
-    position:absolute;
-    top:20px;
-    width:100%;
-    text-align:center;
-    font-size:40px;
-    color:white;
-    font-weight:bold;
-    text-shadow:0 0 10px black;
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 </style>
 </head>
 
 <body>
 
-<div id="message">
-🙌 両手を上げる → 花火<br>
-🙆 丸を作る → 風船
-</div>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
 
-<video id="video" autoplay playsinline muted></video>
-<canvas id="effectCanvas"></canvas>
+<!-- ② MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
+// =====================
+// ① カメラ起動
+// =====================
 const video = document.getElementById("video");
 
-async function startCamera(){
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-        video:{
-            facingMode:"user"
-        },
-        audio:false
-    });
-
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
     video.srcObject = stream;
+  });
 
+// =====================
+// canvas設定
+// =====================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// =====================
+// ③ MediaPipe Hands
+// =====================
+const hands = new Hands({
+  locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+  }
+});
+
+hands.setOptions({
+  maxNumHands: 2,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.7
+});
+
+// 結果受け取り
+hands.onResults(onResults);
+
+// カメラと連動
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({ image: video });
+  },
+  width: 640,
+  height: 480
+});
+camera.start();
+
+// =====================
+// ④ ジェスチャー判定＆演出
+// =====================
+function onResults(results) {
+  if (!results.multiHandLandmarks) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (const landmarks of results.multiHandLandmarks) {
+
+    const wrist = landmarks[0];
+    const indexTip = landmarks[8];
+    const thumbTip = landmarks[4];
+
+    // 手を上げる（簡易）
+    if (wrist.y < 0.5) {
+      triggerFireworks();
+    }
+
+    // OKサイン（親指と人差し指が近い）
+    const dx = thumbTip.x - indexTip.x;
+    const dy = thumbTip.y - indexTip.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if (dist < 0.05) {
+      triggerBalloon();
+    }
+  }
 }
 
-startCamera();
+// =====================
+// 花火（簡易版）
+// =====================
+let lastFirework = 0;
 
+function triggerFireworks() {
+  const now = Date.now();
+  if (now - lastFirework < 1000) return; // 連発防止
+  lastFirework = now;
 
-// -------------------------
-// 仮の演出
-// -------------------------
-
-function showFirework(){
-
-    const msg = document.getElementById("message");
-    msg.innerHTML = "🎆 花火！！ 🎆";
-
-    setTimeout(()=>{
-        msg.innerHTML="🙌 両手を上げる → 花火<br>🙆 丸を作る → 風船";
-    },1500);
-
+  for (let i = 0; i < 50; i++) {
+    setTimeout(() => {
+      ctx.fillStyle = "orange";
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        3,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }, i * 20);
+  }
 }
 
-function showBalloon(){
+// =====================
+// 風船（簡易版）
+// =====================
+function triggerBalloon() {
+  for (let i = 0; i < 10; i++) {
+    let x = Math.random() * canvas.width;
+    let y = canvas.height;
 
-    const msg = document.getElementById("message");
-    msg.innerHTML = "🎈 風船！！ 🎈";
+    const interval = setInterval(() => {
+      ctx.fillStyle = "pink";
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fill();
 
-    setTimeout(()=>{
-        msg.innerHTML="🙌 両手を上げる → 花火<br>🙆 丸を作る → 風船";
-    },1500);
+      y -= 3;
 
+      if (y < -20) clearInterval(interval);
+    }, 30);
+  }
 }
-
-
-// --------------------------------------
-// ここにAIのポーズ認識結果を入れる
-// --------------------------------------
-
-// 例（あとで置き換える）
-//
-// if(両手を上げた){
-//     showFirework();
-// }
-//
-// if(丸を作った){
-//     showBalloon();
-// }
 
 </script>
 
