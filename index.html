@@ -110,13 +110,13 @@ function onResults(results) {
     const indexTip = landmarks[8];
     const thumbTip = landmarks[4];
 
-    // 花火（連打防止込み）
+  // 花火（連打防止込み）
     if (wrist.y < 0.5 && now - lastFirework > 300) {
       triggerFireworks();
       lastFirework = now;
-    }
+}
 
-    // OKサイン（連打防止込み）
+   // OKサイン（連打防止込み）
     const dx = thumbTip.x - indexTip.x;
     const dy = thumbTip.y - indexTip.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
