@@ -132,11 +132,7 @@ function onResults(results) {
 // 花火（簡易版）
 // =====================
 
-
 function triggerFireworks() {
-  const now = Date.now();
-  if (now - lastFirework < 300) return; // 連発防止
-  lastFirework = now;
 
   for (let i = 0; i < 50; i++) {
     setTimeout(() => {
