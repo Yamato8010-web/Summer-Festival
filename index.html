@@ -134,19 +134,24 @@ function onResults(results) {
 
 function triggerFireworks() {
 
-  for (let i = 0; i < 50; i++) {
-    setTimeout(() => {
-      ctx.fillStyle = "orange";
-      ctx.beginPath();
-      ctx.arc(
-        Math.random() * canvas.width,
-        Math.random() * canvas.height,
-        3,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }, i * 20);
+  const centerX = Math.random() * canvas.width;
+  const centerY = Math.random() * (canvas.height / 2);
+
+  for (let i = 0; i < 100; i++) {
+
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * 100;
+
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.arc(
+      centerX + Math.cos(angle) * radius,
+      centerY + Math.sin(angle) * radius,
+      3,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
   }
 }
 
