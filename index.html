@@ -18,7 +18,7 @@ video {
   width: 100vw;
   height: 100vh;
   object-fit: cover;
-  transform: scaleX(-1); /* 鏡表示（重要） */
+  transform: scaleX(-1);
 }
 
 canvas {
@@ -34,14 +34,11 @@ canvas {
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
 
-<!-- ② MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-// =====================
-// ① カメラ起動
-// =====================
+
 const video = document.getElementById("video");
 
 navigator.mediaDevices.getUserMedia({ video: true })
@@ -49,15 +46,12 @@ navigator.mediaDevices.getUserMedia({ video: true })
     video.srcObject = stream;
   });
 
-// =====================
-// canvas設定
-// =====================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 let lastFirework = 0;
 let lastBalloon = 0;
-  
+
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -65,13 +59,8 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-// =====================
-// ③ MediaPipe Hands
-// =====================
 const hands = new Hands({
-  locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-  }
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
 
 hands.setOptions({
@@ -81,10 +70,8 @@ hands.setOptions({
   minTrackingConfidence: 0.7
 });
 
-// 結果受け取り
 hands.onResults(onResults);
 
-// カメラと連動
 const camera = new Camera(video, {
   onFrame: async () => {
     await hands.send({ image: video });
@@ -94,13 +81,8 @@ const camera = new Camera(video, {
 });
 camera.start();
 
-// =====================
-// ④ ジェスチャー判定＆演出
-// =====================
 function onResults(results) {
   if (!results.multiHandLandmarks) return;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const now = Date.now();
 
@@ -110,71 +92,93 @@ function onResults(results) {
     const indexTip = landmarks[8];
     const thumbTip = landmarks[4];
 
-  // 花火（連打防止込み）
+    // 花火
     if (wrist.y < 0.5 && now - lastFirework > 300) {
       triggerFireworks();
       lastFirework = now;
-}
+    }
 
-   // OKサイン（連打防止込み）
+    // OKサイン
     const dx = thumbTip.x - indexTip.x;
     const dy = thumbTip.y - indexTip.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
 
     if (dist < 0.08 && now - lastBalloon > 300) {
-      triggerBalloon();
+      triggerBalloon(
+        (1 - thumbTip.x) * canvas.width,
+        thumbTip.y * canvas.height
+      );
       lastBalloon = now;
     }
   }
 }
 
-// =====================
-// 花火（簡易版）
-// =====================
+let fireParticles = [];
 
 function triggerFireworks() {
 
   const centerX = Math.random() * canvas.width;
-  const centerY = Math.random() * (canvas.height / 2);
+  const centerY = Math.random() * canvas.height * 0.5;
 
-  for (let i = 0; i < 100; i++) {
-
+  for (let i = 0; i < 80; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const radius = Math.random() * 100;
+    const speed = Math.random() * 6;
 
-    ctx.fillStyle = "orange";
-    ctx.beginPath();
-    ctx.arc(
-      centerX + Math.cos(angle) * radius,
-      centerY + Math.sin(angle) * radius,
-      3,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    fireParticles.push({
+      x: centerX,
+      y: centerY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 60,
+      color: "orange",
+      size: 3
+    });
   }
 }
 
-// =====================
-// 風船（簡易版）
-// =====================
-function triggerBalloon() {
+function triggerBalloon(startX, startY) {
+
   for (let i = 0; i < 10; i++) {
-    let x = Math.random() * canvas.width;
-    let y = canvas.height;
 
-    const interval = setInterval(() => {
-      ctx.fillStyle = "pink";
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
-      ctx.fill();
+    const angle = (Math.random() - 0.5) * 0.5;
+    const speed = 2 + Math.random();
 
-      y -= 3;
-
-      if (y < -20) clearInterval(interval);
-    }, 30);
+    fireParticles.push({
+      x: startX,
+      y: startY,
+      vx: Math.cos(angle) * speed,
+      vy: -Math.abs(Math.sin(angle) * speed) - 1.5,
+      life: 80,
+      color: "pink",
+      size: 8
+    });
   }
 }
+
+function animate() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < fireParticles.length; i++) {
+    const p = fireParticles[i];
+
+    ctx.fillStyle = p.color || "orange";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05;
+    p.life--;
+  }
+
+  fireParticles = fireParticles.filter(p => p.life > 0);
+
+  requestAnimationFrame(animate);
+}
+
+animate();
 
 </script>
 
